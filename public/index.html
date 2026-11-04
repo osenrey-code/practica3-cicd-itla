@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tareas DevOps - ITLA Práctica 3</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 680px; margin: 40px auto; padding: 0 20px;
+      background: #f5f7fa; color: #222;
+    }
+    header { text-align: center; margin-bottom: 32px; }
+    header h1 { color: #1f3b63; margin-bottom: 4px; }
+    header p { color: #666; font-size: 0.9rem; }
+    .badge { display: inline-block; background: #1f3b63; color: #fff; padding: 2px 10px; border-radius: 999px; font-size: 0.75rem; vertical-align: middle; margin-left: 8px; }
+    #aviso { background: #fff3cd; border-left: 4px solid #ffc107; padding: 10px 14px; border-radius: 4px; font-size: 0.9rem; margin-bottom: 16px; }
+    form { display: flex; gap: 8px; margin-bottom: 20px; }
+    input[type="text"] { flex: 1; padding: 10px 14px; border: 1px solid #ccc; border-radius: 6px; font-size: 1rem; }
+    button { padding: 10px 18px; background: #1f3b63; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 1rem; }
+    button:hover { background: #2a4f85; }
+    #stats { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+    .stat { background: #fff; border: 1px solid #dde; border-radius: 8px; padding: 8px 16px; font-size: 0.85rem; }
+    .stat strong { display: block; font-size: 1.3rem; color: #1f3b63; }
+    ul { list-style: none; padding: 0; margin: 0; }
+    li {
+      display: flex; align-items: center; justify-content: space-between;
+      background: #fff; border: 1px solid #dde; border-radius: 8px;
+      padding: 10px 14px; margin-bottom: 8px; gap: 8px;
+    }
+    li.hecha .titulo { text-decoration: line-through; color: #aaa; }
+    .titulo { flex: 1; cursor: pointer; }
+    .btn-del { background: #c0392b; border: none; color: #fff; border-radius: 4px; padding: 4px 10px; cursor: pointer; font-size: 0.8rem; }
+    .btn-del:hover { background: #96281b; }
+    .vacio { text-align: center; color: #aaa; padding: 32px 0; }
+    footer { text-align: center; margin-top: 40px; font-size: 0.8rem; color: #aaa; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>📋 Lista de Tareas <span class="badge">CI/CD</span></h1>
+    <p>Práctica 3 · DevOps · ITLA 2026</p>
+  </header>
+
+  <div id="aviso">
+    ⚠️ <strong>Versión estática (GitHub Pages).</strong> Para usar la API ejecuta <code>npm start</code> localmente.
+  </div>
+
+  <div id="stats" hidden>
+    <div class="stat"><strong id="st-total">0</strong>Total</div>
+    <div class="stat"><strong id="st-pend">0</strong>Pendientes</div>
+    <div class="stat"><strong id="st-comp">0</strong>Completadas</div>
+  </div>
+
+  <form id="f">
+    <input id="t" type="text" placeholder="Nueva tarea..." maxlength="200" required>
+    <button type="submit">Agregar</button>
+  </form>
+
+  <ul id="l"><li class="vacio">No hay tareas aún.</li></ul>
+
+  <footer>Práctica 3 - CI/CD Pipeline con GitHub Actions</footer>
+
+  <script>
+    const ul = document.getElementById('l');
+    const stats = document.getElementById('stats');
+
+    async function cargar() {
+      try {
+        const r = await fetch('/api/tareas');
+        if (!r.ok) throw new Error('Sin API');
+        document.getElementById('aviso').hidden = true;
+        stats.hidden = false;
+        const tareas = await r.json();
+        document.getElementById('st-total').textContent = tareas.length;
+        document.getElementById('st-pend').textContent = tareas.filter(t => !t.completada).length;
+        document.getElementById('st-comp').textContent = tareas.filter(t => t.completada).length;
+        ul.innerHTML = '';
+        if (tareas.length === 0) {
+          ul.innerHTML = '<li class="vacio">No hay tareas aún.</li>';
+          return;
+        }
+        tareas.forEach(t => {
+          const li = document.createElement('li');
+          if (t.completada) li.className = 'hecha';
+          const span = document.createElement('span');
+          span.className = 'titulo';
+          span.textContent = t.titulo;
+          span.title = 'Clic para alternar estado';
+          span.onclick = async () => { await fetch('/api/tareas/' + t.id, { method: 'PATCH' }); cargar(); };
+          const btn = document.createElement('button');
+          btn.className = 'btn-del';
+          btn.textContent = '✕';
+          btn.title = 'Eliminar tarea';
+          btn.onclick = async () => { await fetch('/api/tareas/' + t.id, { method: 'DELETE' }); cargar(); };
+          li.appendChild(span);
+          li.appendChild(btn);
+          ul.appendChild(li);
+        });
+      } catch (e) { /* Modo estático: sin API disponible */ }
+    }
+
+    document.getElementById('f').onsubmit = async e => {
+      e.preventDefault();
+      const titulo = document.getElementById('t').value.trim();
+      if (!titulo) return;
+      const r = await fetch('/api/tareas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ titulo })
+      });
+      if (r.ok) { document.getElementById('t').value = ''; cargar(); }
+    };
+
+    cargar();
+  </script>
+</body>
+</html>

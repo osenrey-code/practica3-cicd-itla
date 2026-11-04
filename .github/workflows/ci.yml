@@ -1,0 +1,93 @@
+# Pipeline CI/CD - Práctica 3 - ITLA 2026
+# Se ejecuta en cada push y pull request a la rama main.
+#
+# Etapas:
+#   1. build-test  → instala dependencias, lint, pruebas con cobertura, build Docker
+#   2. deploy      → despliega public/ en GitHub Pages (solo en push a main)
+
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Solo un despliegue a la vez; cancela ejecuciones previas en curso
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  # ─── Etapa 1: Build y pruebas ────────────────────────────────────────────────
+  build-test:
+    name: 🔨 Build y Pruebas
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout del código
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Configurar Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: 📦 Instalar dependencias
+        run: npm ci
+
+      - name: 🔍 Revisión estática (lint)
+        run: npm run lint
+
+      - name: 🧪 Ejecutar pruebas con cobertura
+        run: npm run test:ci
+        env:
+          NODE_ENV: test
+
+      - name: 📊 Subir reporte de cobertura
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: coverage/
+          retention-days: 7
+
+      - name: 🐳 Construir imagen Docker
+        run: docker build -t practica3-cicd:${{ github.sha }} .
+
+      - name: 🩺 Verificar health de la imagen Docker
+        run: |
+          docker run -d --name app-test -p 3000:3000 practica3-cicd:${{ github.sha }}
+          sleep 5
+          curl -f http://localhost:3000/health || (docker logs app-test && exit 1)
+          docker stop app-test && docker rm app-test
+
+  # ─── Etapa 2: Despliegue a GitHub Pages ──────────────────────────────────────
+  deploy:
+    name: 🚀 Despliegue a GitHub Pages
+    needs: build-test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: 📥 Checkout del código
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Configurar GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: 📤 Subir artefacto a Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+
+      - name: 🌐 Desplegar a GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,36 @@
+{
+  "name": "practica3-cicd-itla",
+  "version": "1.0.0",
+  "description": "Práctica 3 - Pipeline CI/CD básico con GitHub Actions - Electiva 1: Introducción a DevOps (ITLA 2026)",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "jest --coverage --coverageReporters=text --coverageReporters=lcov",
+    "test:ci": "jest --coverage --coverageReporters=text --coverageReporters=lcov --forceExit",
+    "lint": "node --check src/app.js && node --check src/server.js && node --check tests/app.test.js"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "coverageThreshold": {
+      "global": {
+        "lines": 80,
+        "functions": 80,
+        "branches": 70,
+        "statements": 80
+      }
+    },
+    "coveragePathIgnorePatterns": [
+      "/node_modules/",
+      "src/server.js"
+    ]
+  },
+  "license": "MIT",
+  "engines": { "node": ">=20" },
+  "dependencies": {
+    "express": "^4.21.2"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "supertest": "^7.0.0"
+  }
+}
