@@ -143,8 +143,4 @@ describe('API de tareas', () => {
     const r = await request(app).post('/api/tareas').send({ titulo: 'Tercera' });
     expect(r.body.id).toBe(3); // ID debe seguir siendo 3, no reutilizar 1
   });
-
-  test('PRUEBA FALLIDA INTENCIONAL - demo pipeline rojo', async () => {
-    expect(1).toBe(2); // Esta prueba siempre falla — solo para demostrar el pipeline en rojo
-  });
 });
